@@ -237,6 +237,30 @@ body{touch-action:pan-y;}
 .d-note{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;font-size:14.5px;
   background:var(--text);color:var(--bg);font-weight:600;}
 
+/* Collapsible month groups */
+.mg{margin:0 -20px;padding:0 20px;border-top:1px solid var(--hair);}
+.mg:first-of-type{border-top:none;}
+.mg-head{width:100%;background:none;border:none;padding:16px 0;display:flex;align-items:center;gap:12px;
+  text-align:left;color:var(--text);cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.mg-chev{flex:0 0 auto;width:7px;height:7px;border-right:1.5px solid var(--text-dim);
+  border-bottom:1.5px solid var(--text-dim);transform:rotate(-45deg);transition:transform .22s;margin-right:2px;}
+.mg.open .mg-chev{transform:rotate(45deg);}
+.mg-name{font-size:16px;font-weight:600;letter-spacing:-.01em;}
+.mg-year{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--text-dim);}
+.mg-spacer{flex:1;}
+.mg-n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:12px;color:var(--text-dim);letter-spacing:.02em;}
+.mg-km{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:14px;font-weight:600;}
+.mg-km .u{font-size:10.5px;font-weight:500;color:var(--text-dim);margin-left:3px;}
+.mg-bar{height:2px;border-radius:2px;background:var(--fill);overflow:hidden;margin:0 0 2px;}
+.mg-bar i{display:block;height:100%;background:var(--accent);border-radius:2px;}
+.mg-body{display:none;padding-bottom:10px;}
+.mg.open .mg-body{display:block;}
+.mg.open .mg-name{color:var(--accent);}
+.mg.open .mg-chev{border-color:var(--accent);}
+.list-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0 6px;}
+.list-tools .lt-n{font-size:12.5px;color:var(--text-dim);}
+.list-tools button{background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;padding:6px 0;cursor:pointer;}
+
 .month-header{
   display:flex;align-items:baseline;justify-content:space-between;gap:12px;
   font-family:'IBM Plex Mono',ui-monospace,monospace;
@@ -479,8 +503,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
   <button class="btn btn-danger" id="btnWipeAll" style="text-align:left;padding-left:0;">Smazat vše</button>
 
   <div class="section-title">O appce</div>
-  <div class="about-row"><span>Verze appky</span><span class="about-val">2.9.0</span></div>
-  <div class="about-row"><span>Poslední změna</span><span class="about-val">2. 9. 2026, 18:45</span></div>
+  <div class="about-row"><span>Verze appky</span><span class="about-val">2.10.1</span></div>
+  <div class="about-row"><span>Poslední změna</span><span class="about-val">2. 9. 2026, 19:10</span></div>
 </div>
 
 <!-- TABBAR -->
@@ -1043,6 +1067,32 @@ function tripItemEl(t){
   return el;
 }
 
+var openMonths = null;
+var MONTHS_KEY = "kj_open_months";
+function loadOpenMonths(){
+  if(openMonths) return openMonths;
+  try{
+    var raw = localStorage.getItem(MONTHS_KEY);
+    if(raw !== null){
+      var parsed = JSON.parse(raw);
+      if(Array.isArray(parsed)) openMonths = parsed;
+    }
+  }catch(e){}
+  return openMonths;
+}
+function saveOpenMonths(){
+  try{ localStorage.setItem(MONTHS_KEY, JSON.stringify(openMonths || [])); }catch(e){}
+}
+function toggleMonth(mk){
+  loadOpenMonths();
+  var arr = openMonths || [];
+  var i = arr.indexOf(mk);
+  if(i === -1) arr.push(mk); else arr.splice(i, 1);
+  openMonths = arr;
+  saveOpenMonths();
+  renderTripsList();
+}
+
 function renderTripsList(){
   var q = (document.getElementById("searchInput").value || "").toLowerCase().trim();
   var list = records.slice().sort(sortByDateDesc);
@@ -1058,19 +1108,73 @@ function renderTripsList(){
     wrap.innerHTML = '<div class="empty-state"><div class="emoji">🔍</div>Žádné jízdy k zobrazení.</div>';
     return;
   }
-  var curMonth = null;
+
+  /* group by month, keep order */
+  var order = [], groups = {};
   list.forEach(function(t){
     var mk = monthKey(t.datum);
-    if(mk !== curMonth){
-      curMonth = mk;
-      var h = document.createElement("div");
-      h.className = "month-header";
-      var mStats = computeStats(list.filter(function(x){ return monthKey(x.datum) === mk; }));
-      h.innerHTML = '<span>'+esc(monthLabel(mk))+'</span><span class="mh-sum">'+mStats.count+' jízd · '+
-        Math.round(mStats.km).toLocaleString("cs-CZ")+' km</span>';
-      wrap.appendChild(h);
-    }
-    wrap.appendChild(tripItemEl(t));
+    if(!groups[mk]){ groups[mk] = []; order.push(mk); }
+    groups[mk].push(t);
+  });
+
+  loadOpenMonths();
+  /* default: newest month open. while searching: everything open */
+  var open = {};
+  if(q){ order.forEach(function(mk){ open[mk] = true; }); }
+  else if(openMonths){ openMonths.forEach(function(mk){ open[mk] = true; }); }
+  else { open[order[0]] = true; }
+
+  var maxKm = 0;
+  order.forEach(function(mk){
+    var s = computeStats(groups[mk]);
+    if(s.km > maxKm) maxKm = s.km;
+  });
+
+  /* tools row */
+  var openCount = order.filter(function(mk){ return open[mk]; }).length;
+  var tools = document.createElement("div");
+  tools.className = "list-tools";
+  tools.innerHTML = '<span class="lt-n">'+list.length+' '+
+    (list.length===1?"jízda":(list.length<5?"jízdy":"jízd"))+' · '+order.length+' '+
+    (order.length===1?"měsíc":(order.length<5?"měsíce":"měsíců"))+'</span>'+
+    (q ? '' : '<button type="button" id="btnMonthsToggle">'+(openCount ? "Sbalit vše" : "Rozbalit vše")+'</button>');
+  wrap.appendChild(tools);
+  var tb = tools.querySelector("#btnMonthsToggle");
+  if(tb) tb.addEventListener("click", function(){
+    openMonths = openCount ? [] : order.slice();
+    saveOpenMonths();
+    renderTripsList();
+  });
+
+  order.forEach(function(mk){
+    var trips = groups[mk], s = computeStats(trips);
+    var g = document.createElement("div");
+    g.className = "mg" + (open[mk] ? " open" : "");
+
+    var label = monthLabel(mk).split(" ");
+    var head = document.createElement("button");
+    head.type = "button";
+    head.className = "mg-head";
+    head.innerHTML = '<span class="mg-chev"></span>'+
+      '<span class="mg-name">'+esc(label[0])+'</span>'+
+      '<span class="mg-year">'+esc(label[1]||"")+'</span>'+
+      '<span class="mg-spacer"></span>'+
+      '<span class="mg-n">'+s.count+'×</span>'+
+      '<span class="mg-km">'+Math.round(s.km).toLocaleString("cs-CZ")+'<span class="u">km</span></span>';
+    head.addEventListener("click", function(){ toggleMonth(mk); });
+    g.appendChild(head);
+
+    var bar = document.createElement("div");
+    bar.className = "mg-bar";
+    bar.innerHTML = '<i style="width:'+(maxKm ? Math.max(3, Math.round(s.km / maxKm * 100)) : 0)+'%"></i>';
+    g.appendChild(bar);
+
+    var body = document.createElement("div");
+    body.className = "mg-body";
+    trips.forEach(function(t){ body.appendChild(tripItemEl(t)); });
+    g.appendChild(body);
+
+    wrap.appendChild(g);
   });
 }
 
