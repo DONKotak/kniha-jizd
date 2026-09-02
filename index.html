@@ -9,9 +9,6 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0B6E4F">
 <title>Kniha jízd</title>
-<!-- Extra icon/manifest links + service worker below only take effect when this
-     file is hosted (e.g. GitHub Pages) — they 404 silently and are harmless
-     when this file is opened locally. -->
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
@@ -80,8 +77,8 @@ body{
   background:var(--bg);
   color:var(--text);
   padding-top:var(--safe-top);
-  padding-bottom:calc(64px + var(--safe-bottom));
-  min-height:100vh;
+  padding-bottom:calc(96px + var(--safe-bottom));
+  min-height:100vh;min-height:100dvh;
   -webkit-font-smoothing:antialiased;
   -webkit-user-select:none;user-select:none;
   text-wrap:pretty;
@@ -123,7 +120,8 @@ a:hover{opacity:.75;}
 
 html,body{overflow-x:hidden;max-width:100%;overscroll-behavior-x:none;}
 body{touch-action:pan-y;}
-.view{padding:0 20px 24px;display:none;}
+.view{padding:0 20px calc(56px + var(--safe-bottom));display:none;}
+.view > :last-child{margin-bottom:0;}
 .view.active{display:block;}
 
 /* Stat cards — hairline row, mono figures */
@@ -1303,6 +1301,7 @@ function switchView(name){
   document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
   document.getElementById("view-"+name).classList.add("active");
   document.querySelectorAll(".tab-btn").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-view")===name); });
+  window.scrollTo(0, 0);
   var titles = {dashboard:"Přehled", trips:"Jízdy", backup:"Zálohy"};
   document.getElementById("topbarTitle").textContent = titles[name];
   document.getElementById("topbarSub").textContent = "";
@@ -1443,8 +1442,6 @@ renderAll();
 })();
 </script>
 <script>
-// Only registers successfully when hosted over https (e.g. GitHub Pages);
-// silently rejects for a local file:// open.
 if("serviceWorker" in navigator){
   window.addEventListener("load", function(){
     navigator.serviceWorker.register("service-worker.js").catch(function(){});
