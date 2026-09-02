@@ -479,8 +479,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
   <button class="btn btn-danger" id="btnWipeAll" style="text-align:left;padding-left:0;">Smazat vše</button>
 
   <div class="section-title">O appce</div>
-  <div class="about-row"><span>Verze appky</span><span class="about-val">2.8.1</span></div>
-  <div class="about-row"><span>Poslední změna</span><span class="about-val">3. 9. 2026, 00:40</span></div>
+  <div class="about-row"><span>Verze appky</span><span class="about-val">2.9.0</span></div>
+  <div class="about-row"><span>Poslední změna</span><span class="about-val">2. 9. 2026, 18:45</span></div>
 </div>
 
 <!-- TABBAR -->
@@ -1019,6 +1019,8 @@ function tripItemEl(t){
     if(res.length){
       tags += '<span class="tag done">✓ Úschova'+(un?" "+un:"")+' · '+
         (res[0].type==="predano"?"předáno":"přetaženo")+' '+fmtDateShort(res[0].rec.datum)+'</span>';
+    } else if(uschovaClosed(t)){
+      tags += '<span class="tag done">✓ Úschova'+(un?" "+un:"")+' · vyřízeno</span>';
     } else {
       tags += '<span class="tag open">● Úschova'+(un?" "+un:"")+' · nevyzvednuto</span>';
     }
@@ -1169,8 +1171,12 @@ function openDetail(id){
           (x.type==="predano"?"předáno":"přetaženo")+' '+esc(when)+
           (r.vozidlo?' · jízda '+esc(r.vozidlo):'')+'</span><span class="arr">›</span></button>';
       }).join("");
+    } else if(uschovaClosed(t)){
+      html += detailRow("Stav", "✓ vyřízeno mimo mé jízdy");
+      html += '<button class="d-link" type="button" data-reopen="'+esc(t.id)+'"><span>Vrátit do úschovy</span><span class="arr">›</span></button>';
     } else {
       html += '<div class="d-note"><span>●</span><span>Zatím nevyzvednuto – auto je stále v úschově</span></div>';
+      html += '<button class="d-link" type="button" data-close="'+esc(t.id)+'" style="margin-top:12px;"><span>Označit jako vyřízené (odvezl si sám / jiná firma)</span><span class="arr">›</span></button>';
     }
   }
 
@@ -1182,6 +1188,12 @@ function openDetail(id){
   body.innerHTML = html;
   body.querySelectorAll("[data-goto]").forEach(function(b){
     b.addEventListener("click", function(){ openDetail(b.getAttribute("data-goto")); });
+  });
+  body.querySelectorAll("[data-close]").forEach(function(b){
+    b.addEventListener("click", function(){ setUschovaClosed(b.getAttribute("data-close"), true); });
+  });
+  body.querySelectorAll("[data-reopen]").forEach(function(b){
+    b.addEventListener("click", function(){ setUschovaClosed(b.getAttribute("data-reopen"), false); });
   });
   document.getElementById("detailOverlay").classList.add("active");
   document.getElementById("modalDetail").classList.add("active");
@@ -1333,6 +1345,16 @@ function uschovaResolvers(t){
     var rk = r.komplikace || {};
     return { type: (rk.predano && rk.predanoRefId === t.id) ? "predano" : "pretah", rec: r };
   }).sort(function(a,b){ return sortByDateDesc(a.rec, b.rec); });
+}
+function uschovaClosed(t){ return !!(t.komplikace && t.komplikace.uschovaUzavrena); }
+function setUschovaClosed(id, val){
+  var t = records.find(function(r){ return r.id === id; });
+  if(!t) return;
+  t.komplikace = t.komplikace || {};
+  t.komplikace.uschovaUzavrena = !!val;
+  save();
+  renderAll();
+  openDetail(id);
 }
 function refName(t, refKey){
   var k = t.komplikace || {};
@@ -1512,7 +1534,7 @@ function exportCsv(){
       t.mytoPrvniTrida ? "ano":"ne", t.mytoPrvniTrida ? Math.round(tollTotalKm(t.mytoPrvniTridaSegments)) : 0,
       k.ztizenaNakladka ? (k.ztizenaNakladkaText||"ano") : "",
       k.uschova ? "ano":"ne", k.uschova ? (k.uschovaVozidlo||"") : "",
-      k.uschova ? (uschovaResolvers(t).length ? "ano" : "ne") : "", k.predano ? "ano":"ne", k.predano && k.predanoRefId ? k.predanoRefId : "", k.pretah ? "ano":"ne", k.pretah && k.pretahRefId ? k.pretahRefId : "",
+      k.uschova ? ((uschovaResolvers(t).length || k.uschovaUzavrena) ? "ano" : "ne") : "", k.predano ? "ano":"ne", k.predano && k.predanoRefId ? k.predanoRefId : "", k.pretah ? "ano":"ne", k.pretah && k.pretahRefId ? k.pretahRefId : "",
       k.praceMechanika ? (k.praceMechanikaMin||0) : 0,
       k.cekacka ? (k.cekackaMin||0) : 0,
       k.vyprosteni ? (k.vyprosteniMin||0) : 0,
