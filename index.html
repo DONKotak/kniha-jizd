@@ -231,6 +231,12 @@ body{touch-action:pan-y;}
 .tag.warn{background:var(--danger-light);color:var(--danger);}
 .tag.extra{background:var(--orange-light);color:var(--orange);}
 
+/* nevyřízená úschova: obrácený kontrast místo další barvy */
+.tag.open{background:var(--text);color:var(--bg);font-weight:600;}
+.tag.done,.tag.muted{background:var(--fill);color:var(--text-dim);}
+.d-note{display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:12px;font-size:14.5px;
+  background:var(--text);color:var(--bg);font-weight:600;}
+
 .month-header{
   display:flex;align-items:baseline;justify-content:space-between;gap:12px;
   font-family:'IBM Plex Mono',ui-monospace,monospace;
@@ -473,8 +479,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
   <button class="btn btn-danger" id="btnWipeAll" style="text-align:left;padding-left:0;">Smazat vše</button>
 
   <div class="section-title">O appce</div>
-  <div class="about-row"><span>Verze appky</span><span class="about-val">2.7.2</span></div>
-  <div class="about-row"><span>Poslední změna</span><span class="about-val">3. 9. 2026, 00:10</span></div>
+  <div class="about-row"><span>Verze appky</span><span class="about-val">2.8.1</span></div>
+  <div class="about-row"><span>Poslední změna</span><span class="about-val">3. 9. 2026, 00:40</span></div>
 </div>
 
 <!-- TABBAR -->
@@ -590,6 +596,11 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
     <div class="checkbox-row" style="border-top:1px solid var(--hair);">
       <div class="lbl-main">Přetah</div>
       <button class="switch" id="sw_pretah"><span class="knob"></span></button>
+    </div>
+    <div class="reveal" id="time_pretah" style="display:none;">
+      <label style="margin-top:0;">Ke které jízdě s úschovou</label>
+      <select id="f_pretahRef"></select>
+      <div class="hint">Nepovinné – když nevybereš, uloží se jen „přetah“.</div>
     </div>
     <div class="checkbox-row" style="border-top:1px solid var(--hair);">
       <div class="lbl-main">Práce mechanika</div>
@@ -1002,9 +1013,18 @@ function tripItemEl(t){
   }
   var k = t.komplikace || {};
   if(k.ztizenaNakladka) tags += '<span class="tag extra">Ztížená nakládka</span>';
-  if(k.uschova) tags += '<span class="tag extra">Úschova'+(uschovaName(t)||t.vozidlo?" "+(uschovaName(t)||t.vozidlo):"")+'</span>';
-  if(k.predano) tags += '<span class="tag extra">Předáno'+(predanoName(t)?" "+predanoName(t):"")+'</span>';
-  if(k.pretah) tags += '<span class="tag extra">Přetah</span>';
+  if(k.uschova){
+    var un = uschovaName(t) || t.vozidlo || "";
+    var res = uschovaResolvers(t);
+    if(res.length){
+      tags += '<span class="tag done">✓ Úschova'+(un?" "+un:"")+' · '+
+        (res[0].type==="predano"?"předáno":"přetaženo")+' '+fmtDateShort(res[0].rec.datum)+'</span>';
+    } else {
+      tags += '<span class="tag open">● Úschova'+(un?" "+un:"")+' · nevyzvednuto</span>';
+    }
+  }
+  if(k.predano) tags += '<span class="tag muted">✓ Předáno'+(predanoName(t)?" "+predanoName(t):"")+'</span>';
+  if(k.pretah) tags += '<span class="tag muted">✓ Přetah'+(refName(t,"pretahRefId")?" "+refName(t,"pretahRefId"):"")+'</span>';
   if(k.praceMechanika) tags += '<span class="tag extra">Práce'+(k.praceMechanikaMin?" "+fmtMinutes(k.praceMechanikaMin):"")+'</span>';
   if(k.cekacka) tags += '<span class="tag extra">Čekačka'+(k.cekackaMin?" "+fmtMinutes(k.cekackaMin):"")+'</span>';
   if(k.vyprosteni) tags += '<span class="tag extra">Vyproštění'+(k.vyprosteniMin?" "+fmtMinutes(k.vyprosteniMin):"")+'</span>';
@@ -1102,7 +1122,7 @@ function openDetail(id){
   var srv = "";
   if(k.ztizenaNakladka) srv += detailRow("Ztížená nakládka", esc(k.ztizenaNakladkaText) || "ano");
   if(k.uschova) srv += detailRow("Úschova", esc(uschovaName(t) || t.vozidlo) || "ano");
-  if(k.pretah) srv += detailRow("Přetah", "ano");
+  if(k.pretah) srv += detailRow("Přetah", esc(refName(t,"pretahRefId")) || "ano");
   if(k.praceMechanika) srv += detailRow("Práce mechanika", k.praceMechanikaMin ? fmtMinutes(k.praceMechanikaMin) : "ano");
   if(k.cekacka) srv += detailRow("Čekačka", k.cekackaMin ? fmtMinutes(k.cekackaMin) : "ano");
   if(k.vyprosteni) srv += detailRow("Vyproštění", k.vyprosteniMin ? fmtMinutes(k.vyprosteniMin) : "ano");
@@ -1126,16 +1146,31 @@ function openDetail(id){
     }
   }
 
-  /* jízdy, které se hlásí k této úschově */
+  if(k.pretah && k.pretahRefId){
+    var pref = records.find(function(r){ return r.id === k.pretahRefId; });
+    if(pref){
+      var pn = uschovaName(pref) || (pref.vozidlo||"");
+      var pWhen = fmtDateShort(pref.datum) + (pref.casPrijezd ? " " + pref.casPrijezd : "");
+      html += '<div class="d-sec">Přetaženo z úschovy</div>'+
+        '<button class="d-link" type="button" data-goto="'+esc(pref.id)+'"><span>'+
+        (pn?'<b>'+esc(pn)+'</b> · ':'')+'úschova '+esc(pWhen)+'</span><span class="arr">›</span></button>';
+    }
+  }
+
+  /* stav úschovy */
   if(k.uschova){
-    var back = records.filter(function(r){
-      return r.komplikace && r.komplikace.predano && r.komplikace.predanoRefId === t.id;
-    }).sort(sortByDateDesc);
-    if(back.length){
-      html += '<div class="d-sec">Vyzvednuto z této úschovy</div>' + back.map(function(r){
-        return '<button class="d-link" type="button" data-goto="'+esc(r.id)+'"><span>předáno '+
-          esc(fmtDateShort(r.datum))+(r.vozidlo?' · jízda '+esc(r.vozidlo):'')+'</span><span class="arr">›</span></button>';
+    var res = uschovaResolvers(t);
+    html += '<div class="d-sec">Stav úschovy</div>';
+    if(res.length){
+      html += res.map(function(x){
+        var r = x.rec;
+        var when = fmtDateShort(r.datum) + (r.casOdjezd ? " " + r.casOdjezd : "");
+        return '<button class="d-link" type="button" data-goto="'+esc(r.id)+'"><span>✓ '+
+          (x.type==="predano"?"předáno":"přetaženo")+' '+esc(when)+
+          (r.vozidlo?' · jízda '+esc(r.vozidlo):'')+'</span><span class="arr">›</span></button>';
       }).join("");
+    } else {
+      html += '<div class="d-note"><span>●</span><span>Zatím nevyzvednuto – auto je stále v úschově</span></div>';
     }
   }
 
@@ -1204,6 +1239,7 @@ function openForm(id){
   formSwitches.predano = !!k.predano;
   document.getElementById("f_uschovaVozidlo").value = k.uschovaVozidlo || "";
   fillPredanoOptions(k.predanoRefId || "", t ? t.id : null);
+  fillPretahOptions(k.pretahRefId || "", t ? t.id : null);
   formSwitches.pretah = !!k.pretah;
   formSwitches.praceMechanika = !!k.praceMechanika;
   formSwitches.cekacka = !!k.cekacka;
@@ -1253,6 +1289,7 @@ function updateSwitchUI(){
   document.getElementById("time_ostatni").style.display = formSwitches.ostatni ? "block" : "none";
   document.getElementById("time_predano").style.display = formSwitches.predano ? "block" : "none";
   document.getElementById("time_uschova").style.display = formSwitches.uschova ? "block" : "none";
+  document.getElementById("time_pretah").style.display = formSwitches.pretah ? "block" : "none";
 }
 
 function refreshVehicleSuggestions(){
@@ -1287,6 +1324,21 @@ function uschovaName(r){
   var k = (r && r.komplikace) || {};
   return (k.uschovaVozidlo || "").trim();
 }
+/* who resolved this úschova: {type:"predano"|"pretah", rec} or null */
+function uschovaResolvers(t){
+  return records.filter(function(r){
+    var rk = r.komplikace || {};
+    return (rk.predano && rk.predanoRefId === t.id) || (rk.pretah && rk.pretahRefId === t.id);
+  }).map(function(r){
+    var rk = r.komplikace || {};
+    return { type: (rk.predano && rk.predanoRefId === t.id) ? "predano" : "pretah", rec: r };
+  }).sort(function(a,b){ return sortByDateDesc(a.rec, b.rec); });
+}
+function refName(t, refKey){
+  var k = t.komplikace || {};
+  var ref = k[refKey] ? records.find(function(r){ return r.id === k[refKey]; }) : null;
+  return uschovaName(ref) || (ref && (ref.vozidlo||"").trim()) || "";
+}
 function predanoName(t){
   var k = t.komplikace || {};
   var ref = k.predanoRefId ? records.find(function(r){ return r.id === k.predanoRefId; }) : null;
@@ -1294,7 +1346,9 @@ function predanoName(t){
 }
 
 /* trips that had úschova – offered for linking a "předáno" */
-function fillPredanoOptions(selectedId, excludeId){
+function fillPredanoOptions(selectedId, excludeId){ fillRefOptions("f_predanoRef", selectedId, excludeId); }
+function fillPretahOptions(selectedId, excludeId){ fillRefOptions("f_pretahRef", selectedId, excludeId); }
+function fillRefOptions(selectId, selectedId, excludeId){
   var opts = records.filter(function(r){
     return r.komplikace && r.komplikace.uschova && r.id !== excludeId;
   }).sort(sortByDateDesc).map(function(r){
@@ -1304,7 +1358,7 @@ function fillPredanoOptions(selectedId, excludeId){
     var label = (nm ? nm + " · " : "") + when + (where ? " · " + where : "");
     return '<option value="'+esc(r.id)+'">'+esc(label)+'</option>';
   });
-  var sel = document.getElementById("f_predanoRef");
+  var sel = document.getElementById(selectId);
   sel.innerHTML = '<option value="">— nepropojeno —</option>' + opts.join("");
   sel.value = selectedId || "";
 }
@@ -1380,6 +1434,7 @@ function collectFormData(){
       predano: formSwitches.predano,
       predanoRefId: formSwitches.predano ? document.getElementById("f_predanoRef").value : "",
       pretah: formSwitches.pretah,
+      pretahRefId: formSwitches.pretah ? document.getElementById("f_pretahRef").value : "",
       praceMechanika: formSwitches.praceMechanika,
       praceMechanikaMin: praceMechanikaMin,
       cekacka: formSwitches.cekacka,
@@ -1447,7 +1502,7 @@ function csvEscape(v){
 function exportCsv(){
   var header = ["Datum","Vozidlo","Cas odjezdu","Cas navratu","Odkud","Nakladka","Skladka/slozeni","Zpet na firmu","Km",
     "Myto dalnice","Myto dalnice km","Myto 1.trida","Myto 1.trida km",
-    "Ztizena nakladka text","Uschova","Uschova vozidlo","Predano","Predano k jizde ID","Pretah","Prace mechanika min","Cekacka min","Vyprosteni min","Marny vyjezd","Ostatni text","Poznamky"];
+    "Ztizena nakladka text","Uschova","Uschova vozidlo","Uschova vyresena","Predano","Predano k jizde ID","Pretah","Pretah k jizde ID","Prace mechanika min","Cekacka min","Vyprosteni min","Marny vyjezd","Ostatni text","Poznamky"];
   var lines = [header.join(";")];
   records.slice().sort(sortByDateDesc).forEach(function(t){
     var k = t.komplikace || {};
@@ -1456,7 +1511,8 @@ function exportCsv(){
       t.mytoDalnice ? "ano":"ne", t.mytoDalnice ? Math.round(tollTotalKm(t.mytoDalniceSegments)) : 0,
       t.mytoPrvniTrida ? "ano":"ne", t.mytoPrvniTrida ? Math.round(tollTotalKm(t.mytoPrvniTridaSegments)) : 0,
       k.ztizenaNakladka ? (k.ztizenaNakladkaText||"ano") : "",
-      k.uschova ? "ano":"ne", k.uschova ? (k.uschovaVozidlo||"") : "", k.predano ? "ano":"ne", k.predano && k.predanoRefId ? k.predanoRefId : "", k.pretah ? "ano":"ne",
+      k.uschova ? "ano":"ne", k.uschova ? (k.uschovaVozidlo||"") : "",
+      k.uschova ? (uschovaResolvers(t).length ? "ano" : "ne") : "", k.predano ? "ano":"ne", k.predano && k.predanoRefId ? k.predanoRefId : "", k.pretah ? "ano":"ne", k.pretah && k.pretahRefId ? k.pretahRefId : "",
       k.praceMechanika ? (k.praceMechanikaMin||0) : 0,
       k.cekacka ? (k.cekackaMin||0) : 0,
       k.vyprosteni ? (k.vyprosteniMin||0) : 0,
