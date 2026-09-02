@@ -162,6 +162,44 @@ body{touch-action:pan-y;}
 .sec-body{display:none;padding-bottom:20px;}
 .sec.open .sec-body{display:block;}
 
+/* Dashboard vehicles */
+.veh-row{display:flex;align-items:baseline;gap:12px;padding:11px 0;border-top:1px solid var(--hair);}
+.veh-row:last-child{border-bottom:1px solid var(--hair);}
+.veh-name{flex:1;min-width:0;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.veh-km{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;color:var(--text-dim);}
+.veh-row:last-child{border-bottom:1px solid var(--hair);margin-bottom:8px;}
+#vehicleList .veh-row{padding-right:72px;}
+.veh-count{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:15px;font-weight:600;color:var(--accent);min-width:38px;text-align:right;}
+
+/* Trip detail */
+.d-hero{padding:6px 0 20px;border-bottom:1px solid var(--hair);}
+.d-date{font-size:13px;color:var(--text-dim);letter-spacing:.02em;}
+.d-fig{display:flex;align-items:baseline;gap:7px;margin-top:6px;}
+.d-fig .n{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:44px;font-weight:600;letter-spacing:-.02em;line-height:1;}
+.d-fig .u{font-size:14px;color:var(--text-dim);}
+.d-meta{display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:12px;font-size:13.5px;color:var(--text-dim);}
+.d-meta b{color:var(--text);font-weight:600;}
+.d-sec{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:10.5px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.12em;color:var(--text-dim);margin:26px 0 4px;}
+.d-row{display:flex;gap:14px;align-items:baseline;padding:11px 0;border-top:1px solid var(--hair);}
+.d-row .k{flex:0 0 40%;font-size:13.5px;color:var(--text-dim);}
+.d-row .v{flex:1;min-width:0;font-size:15px;text-wrap:pretty;}
+.d-route{margin-top:2px;}
+.d-stop{display:flex;gap:12px;align-items:flex-start;padding:9px 0;}
+.d-stop .dot{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:var(--accent);margin-top:6px;
+  box-shadow:0 0 0 4px color-mix(in oklab, var(--accent) 16%, transparent);}
+.d-stop .txt{flex:1;min-width:0;}
+.d-stop .lb{font-size:11.5px;color:var(--text-dim);letter-spacing:.04em;text-transform:uppercase;}
+.d-stop .pl{font-size:15.5px;margin-top:1px;}
+.d-stops{position:relative;padding-left:2px;}
+.d-stops::before{content:"";position:absolute;left:6px;top:16px;bottom:16px;width:1px;background:var(--hair);}
+.d-link{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+  background:none;border:none;border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+  padding:13px 0;color:var(--text);font-size:15px;text-align:left;cursor:pointer;}
+.d-link .arr{color:var(--accent);font-size:17px;}
+
+.mh-sum{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:11px;font-weight:500;color:var(--text-dim);letter-spacing:.04em;}
+
 .about-row{display:flex;justify-content:space-between;align-items:baseline;gap:16px;
   padding:13px 0;border-top:1px solid var(--hair);font-size:14px;color:var(--text-dim);}
 .about-row:last-of-type{border-bottom:1px solid var(--hair);}
@@ -194,6 +232,7 @@ body{touch-action:pan-y;}
 .tag.extra{background:var(--orange-light);color:var(--orange);}
 
 .month-header{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
   font-family:'IBM Plex Mono',ui-monospace,monospace;
   font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
   font-weight:500;color:var(--text-dim);margin:28px 0 4px;
@@ -369,7 +408,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
 
   <div class="seg-row">
     <button class="seg period-mode-opt active" data-mode="month">Měsíc</button>
-    <button class="seg period-mode-opt" data-mode="custom">Vlastní období</button>
+    <button class="seg period-mode-opt" data-mode="custom">Období</button>
+    <button class="seg period-mode-opt" data-mode="all">Celkem</button>
   </div>
 
   <div id="periodMonthControls" class="stepper">
@@ -389,12 +429,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
     </div>
   </div>
 
-  <div class="section-title">Celkem</div>
-  <div class="totals">
-    <div class="cell"><div class="val" id="statCount">0</div><div class="lbl">jízd</div></div>
-    <div class="cell"><div class="val" id="statKm">0</div><div class="lbl">km</div></div>
-    <div class="cell"><div class="val" id="statTime">0h</div><div class="lbl">čas</div></div>
-  </div>
+  <div class="section-title">Vozidla</div>
+  <div id="vehicleList"></div>
 
   <div class="section-title">Poslední jízdy</div>
   <div id="recentList"></div>
@@ -437,8 +473,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
   <button class="btn btn-danger" id="btnWipeAll" style="text-align:left;padding-left:0;">Smazat vše</button>
 
   <div class="section-title">O appce</div>
-  <div class="about-row"><span>Verze appky</span><span class="about-val">2.4.0</span></div>
-  <div class="about-row"><span>Poslední změna</span><span class="about-val">2. 9. 2026, 21:40</span></div>
+  <div class="about-row"><span>Verze appky</span><span class="about-val">2.7.2</span></div>
+  <div class="about-row"><span>Poslední změna</span><span class="about-val">3. 9. 2026, 00:10</span></div>
 </div>
 
 <!-- TABBAR -->
@@ -476,7 +512,9 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
       <div><label style="margin-top:0;">Čas návratu</label><input type="time" id="f_casPrijezd"></div>
     </div>
     <label>Vozidlo</label>
-    <input type="text" id="f_vozidlo" placeholder="např. Atego">
+    <input type="text" id="f_vozidlo" placeholder="např. Atego" list="vehicleNames" autocapitalize="words">
+    <datalist id="vehicleNames"></datalist>
+    <div class="hint">Piš název stejně jako minule – nabídne se ti z dřívějších jízd, aby se počty správně sečetly.</div>
 
     </div></div>
     <div class="sec" data-sec="trasa"><button class="sec-head" type="button"><span class="sec-t">Trasa</span><span class="sec-sum" id="sum_trasa"></span><span class="sec-chev"></span></button><div class="sec-body">
@@ -533,6 +571,21 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
     <div class="checkbox-row" style="border-top:1px solid var(--hair);">
       <div class="lbl-main">Úschova</div>
       <button class="switch" id="sw_uschova"><span class="knob"></span></button>
+    </div>
+    <div class="reveal" id="time_uschova" style="display:none;">
+      <label style="margin-top:0;">Tažené vozidlo v úschově</label>
+      <input type="text" id="f_uschovaVozidlo" placeholder="např. Atego" list="uschovaNames" autocapitalize="words">
+      <datalist id="uschovaNames"></datalist>
+      <div class="hint">Auto, které zůstalo v úschově – podle názvu se pak nabídne u „Předáno“.</div>
+    </div>
+    <div class="checkbox-row" style="border-top:1px solid var(--hair);">
+      <div class="lbl-main">Předáno z úschovy</div>
+      <button class="switch" id="sw_predano"><span class="knob"></span></button>
+    </div>
+    <div class="reveal" id="time_predano" style="display:none;">
+      <label style="margin-top:0;">Ke které jízdě s úschovou</label>
+      <select id="f_predanoRef"></select>
+      <div class="hint">Nepovinné – když nevybereš, uloží se jen „předáno“.</div>
     </div>
     <div class="checkbox-row" style="border-top:1px solid var(--hair);">
       <div class="lbl-main">Přetah</div>
@@ -611,7 +664,7 @@ var records = [];
 var settings = {defaultFirma:""};
 var editingId = null;
 
-var SWITCH_KEYS = ["mytoDalnice","mytoPrvniTrida","nakladkaDalnice","ztizenaNakladka","uschova","pretah","praceMechanika","cekacka","vyprosteni","marnyVyjezd","ostatni"];
+var SWITCH_KEYS = ["mytoDalnice","mytoPrvniTrida","nakladkaDalnice","ztizenaNakladka","uschova","predano","pretah","praceMechanika","cekacka","vyprosteni","marnyVyjezd","ostatni"];
 var formSwitches = {};
 var tollArrays = { mytoDalnice: [], mytoPrvniTrida: [] };
 var tollListIds = { mytoDalnice: "tollSegmentsListDalnice", mytoPrvniTrida: "tollSegmentsListPrvniTrida" };
@@ -856,6 +909,7 @@ function initPeriodControls(){
 }
 
 function getPeriodRecords(){
+  if(periodMode === "all") return records.slice();
   if(periodMode === "month"){
     return records.filter(function(t){ return monthKey(t.datum) === periodMonthValue; });
   }
@@ -884,16 +938,37 @@ function renderPeriodStats(){
     var toLbl = periodToDate ? fmtDateShort(periodToDate) + (periodToTime ? " " + periodToTime : "") : "dodnes";
     label = fromLbl + " – " + toLbl;
   }
+  if(periodMode === "all") label = "Celkem – všechny jízdy";
   document.getElementById("periodLabel").textContent = label;
+  renderVehicles(list);
 }
 
-function renderDashboard(){
-  var all = computeStats(records);
-  document.getElementById("statCount").textContent = all.count;
-  document.getElementById("statKm").textContent = Math.round(all.km).toLocaleString("cs-CZ");
-  document.getElementById("statTime").textContent = fmtMinutes(all.mins);
+/* vehicles in current period, grouped by name (case/space tolerant) */
+function vehicleKey(name){ return (name||"").trim().replace(/\s+/g," ").toLowerCase(); }
+function renderVehicles(list){
+  var map = {};
+  list.filter(function(t){ return !(t.komplikace && t.komplikace.predano); }).forEach(function(t){
+    var key = vehicleKey(t.vozidlo);
+    if(!key) key = "—";
+    if(!map[key]) map[key] = { label: (t.vozidlo||"").trim() || "Bez vozidla", count:0, km:0 };
+    map[key].count++;
+    map[key].km += (+t.km || 0);
+  });
+  var arr = Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(a,b){ return b.count - a.count || b.km - a.km; });
+  var wrap = document.getElementById("vehicleList");
+  if(!arr.length){ wrap.innerHTML = '<div class="hint" style="padding:10px 0;">V tomto období žádné jízdy.</div>'; return; }
+  wrap.innerHTML = arr.map(function(v){
+    return '<div class="veh-row"><span class="veh-name">'+esc(v.label)+'</span>'+
+      '<span class="veh-km">'+Math.round(v.km).toLocaleString("cs-CZ")+' km</span>'+
+      '<span class="veh-count">'+v.count+'×</span></div>';
+  }).join("");
+}
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]; }); }
 
+function renderDashboard(){
   renderPeriodStats();
+  refreshVehicleSuggestions();
 
   var recent = records.slice().sort(sortByDateDesc).slice(0,5);
   var wrap = document.getElementById("recentList");
@@ -927,7 +1002,8 @@ function tripItemEl(t){
   }
   var k = t.komplikace || {};
   if(k.ztizenaNakladka) tags += '<span class="tag extra">Ztížená nakládka</span>';
-  if(k.uschova) tags += '<span class="tag extra">Úschova</span>';
+  if(k.uschova) tags += '<span class="tag extra">Úschova'+(uschovaName(t)||t.vozidlo?" "+(uschovaName(t)||t.vozidlo):"")+'</span>';
+  if(k.predano) tags += '<span class="tag extra">Předáno'+(predanoName(t)?" "+predanoName(t):"")+'</span>';
   if(k.pretah) tags += '<span class="tag extra">Přetah</span>';
   if(k.praceMechanika) tags += '<span class="tag extra">Práce'+(k.praceMechanikaMin?" "+fmtMinutes(k.praceMechanikaMin):"")+'</span>';
   if(k.cekacka) tags += '<span class="tag extra">Čekačka'+(k.cekackaMin?" "+fmtMinutes(k.cekackaMin):"")+'</span>';
@@ -967,7 +1043,9 @@ function renderTripsList(){
       curMonth = mk;
       var h = document.createElement("div");
       h.className = "month-header";
-      h.textContent = monthLabel(mk);
+      var mStats = computeStats(list.filter(function(x){ return monthKey(x.datum) === mk; }));
+      h.innerHTML = '<span>'+esc(monthLabel(mk))+'</span><span class="mh-sum">'+mStats.count+' jízd · '+
+        Math.round(mStats.km).toLocaleString("cs-CZ")+' km</span>';
       wrap.appendChild(h);
     }
     wrap.appendChild(tripItemEl(t));
@@ -989,41 +1067,93 @@ function openDetail(id){
   var mins = tripDurationMinutes(t);
   var k = t.komplikace || {};
   var html = "";
-  html += detailRow("Datum", fmtDate(t.datum));
-  html += detailRow("Vozidlo", t.vozidlo);
-  html += detailRow("Čas", (t.casOdjezd||"?") + " – " + (t.casPrijezd||"?") + (mins?" ("+fmtMinutes(mins)+")":""));
-  html += detailRow("Odkud se vyjelo", t.mestoOdjezd);
-  html += detailRow("Místo nakládky", nakladkaLabel(t));
-  html += detailRow("Místo složení", t.mistoSlozeni);
-  html += detailRow("Zpět na firmu", t.zpetNaFirmu);
-  html += detailRow("Najeté km", (t.km||0) + " km");
-  if(t.mytoDalnice){
-    html += detailRow("Mýto – dálnice", segmentsHtml(t.mytoDalniceSegments) || "ano");
+
+  /* hero */
+  html += '<div class="d-hero">'+
+    '<div class="d-date">'+esc(fmtDate(t.datum))+(t.vozidlo?' · '+esc(t.vozidlo):'')+'</div>'+
+    '<div class="d-fig"><span class="n">'+(t.km||0).toLocaleString("cs-CZ")+'</span><span class="u">km</span></div>'+
+    '<div class="d-meta">'+
+      (t.casOdjezd||t.casPrijezd ? '<div><b>'+esc(t.casOdjezd||"?")+' – '+esc(t.casPrijezd||"?")+'</b></div>' : '')+
+      (mins ? '<div><b>'+fmtMinutes(mins)+'</b> za volantem</div>' : '')+
+    '</div>'+
+  '</div>';
+
+  /* route as stop list */
+  var stops = [
+    ["Odjezd", t.mestoOdjezd],
+    ["Nakládka", nakladkaLabel(t)],
+    ["Složení", t.mistoSlozeni],
+    ["Návrat", t.zpetNaFirmu]
+  ].filter(function(s){ return s[1]; });
+  if(stops.length){
+    html += '<div class="d-sec">Trasa</div><div class="d-stops">'+ stops.map(function(s){
+      return '<div class="d-stop"><span class="dot"></span><span class="txt">'+
+        '<span class="lb">'+s[0]+'</span><div class="pl">'+esc(s[1])+'</div></span></div>';
+    }).join("") +'</div>';
   }
-  if(t.mytoPrvniTrida){
-    html += detailRow("Mýto – první třída", segmentsHtml(t.mytoPrvniTridaSegments) || "ano");
+
+  /* mýto */
+  var toll = "";
+  if(t.mytoDalnice) toll += detailRow("Dálnice", segmentsHtml(t.mytoDalniceSegments) || "ano");
+  if(t.mytoPrvniTrida) toll += detailRow("První třída", segmentsHtml(t.mytoPrvniTridaSegments) || "ano");
+  if(toll) html += '<div class="d-sec">Mýto</div>' + toll;
+
+  /* služby */
+  var srv = "";
+  if(k.ztizenaNakladka) srv += detailRow("Ztížená nakládka", esc(k.ztizenaNakladkaText) || "ano");
+  if(k.uschova) srv += detailRow("Úschova", esc(uschovaName(t) || t.vozidlo) || "ano");
+  if(k.pretah) srv += detailRow("Přetah", "ano");
+  if(k.praceMechanika) srv += detailRow("Práce mechanika", k.praceMechanikaMin ? fmtMinutes(k.praceMechanikaMin) : "ano");
+  if(k.cekacka) srv += detailRow("Čekačka", k.cekackaMin ? fmtMinutes(k.cekackaMin) : "ano");
+  if(k.vyprosteni) srv += detailRow("Vyproštění", k.vyprosteniMin ? fmtMinutes(k.vyprosteniMin) : "ano");
+  if(k.marnyVyjezd) srv += detailRow("Marný výjezd", "ano");
+  if(k.ostatni) srv += detailRow("Ostatní", esc(k.ostatniText) || "ano");
+  if(srv) html += '<div class="d-sec">Další služby</div>' + srv;
+
+  /* předáno z úschovy + link */
+  if(k.predano){
+    html += '<div class="d-sec">Předáno z úschovy</div>';
+    var ref = k.predanoRefId ? records.find(function(r){ return r.id === k.predanoRefId; }) : null;
+    if(ref){
+      var nm = uschovaName(ref) || ref.vozidlo || "";
+      var where = [ref.mistoSlozeni, ref.mistoNakladky, ref.mestoOdjezd].filter(Boolean)[0] || "";
+      var refWhen = fmtDateShort(ref.datum) + (ref.casPrijezd ? " " + ref.casPrijezd : "");
+      html += '<button class="d-link" type="button" data-goto="'+esc(ref.id)+'"><span>'+
+        (nm?'<b>'+esc(nm)+'</b> · ':'')+'úschova '+esc(refWhen)+(where?' · '+esc(where):'')+
+        '</span><span class="arr">›</span></button>';
+    } else {
+      html += detailRow(predanoName(t) ? "Vozidlo" : "Stav", esc(predanoName(t)) || "předáno (bez propojení)");
+    }
   }
 
-  var komLines = [];
-  if(k.ztizenaNakladka) komLines.push("Ztížená nakládka" + (k.ztizenaNakladkaText?": "+k.ztizenaNakladkaText:""));
-  if(k.uschova) komLines.push("Úschova");
-  if(k.pretah) komLines.push("Přetah");
-  if(k.praceMechanika) komLines.push("Práce mechanika" + (k.praceMechanikaMin?" ("+fmtMinutes(k.praceMechanikaMin)+")":""));
-  if(k.cekacka) komLines.push("Čekačka" + (k.cekackaMin?" ("+fmtMinutes(k.cekackaMin)+")":""));
-  if(k.vyprosteni) komLines.push("Vyproštění" + (k.vyprosteniMin?" ("+fmtMinutes(k.vyprosteniMin)+")":""));
-  if(k.marnyVyjezd) komLines.push("Marný výjezd");
-  if(k.ostatni) komLines.push("Ostatní" + (k.ostatniText?": "+k.ostatniText:""));
-  if(komLines.length) html += detailRow("Další služby", komLines.join("<br>"));
+  /* jízdy, které se hlásí k této úschově */
+  if(k.uschova){
+    var back = records.filter(function(r){
+      return r.komplikace && r.komplikace.predano && r.komplikace.predanoRefId === t.id;
+    }).sort(sortByDateDesc);
+    if(back.length){
+      html += '<div class="d-sec">Vyzvednuto z této úschovy</div>' + back.map(function(r){
+        return '<button class="d-link" type="button" data-goto="'+esc(r.id)+'"><span>předáno '+
+          esc(fmtDateShort(r.datum))+(r.vozidlo?' · jízda '+esc(r.vozidlo):'')+'</span><span class="arr">›</span></button>';
+      }).join("");
+    }
+  }
 
-  if(t.poznamky) html += detailRow("Poznámky", t.poznamky);
+  if(t.poznamky){
+    html += '<div class="d-sec">Poznámky</div><div class="d-row"><div class="v">'+esc(t.poznamky)+'</div></div>';
+  }
 
-  document.getElementById("detailBody").innerHTML = html;
+  var body = document.getElementById("detailBody");
+  body.innerHTML = html;
+  body.querySelectorAll("[data-goto]").forEach(function(b){
+    b.addEventListener("click", function(){ openDetail(b.getAttribute("data-goto")); });
+  });
   document.getElementById("detailOverlay").classList.add("active");
   document.getElementById("modalDetail").classList.add("active");
 }
 function detailRow(label, val){
   if(!val) return "";
-  return '<div style="margin-bottom:14px;"><div style="font-size:12px;color:var(--text-dim);font-weight:600;margin-bottom:3px;">'+label+'</div><div style="font-size:15px;">'+val+'</div></div>';
+  return '<div class="d-row"><div class="k">'+label+'</div><div class="v">'+val+'</div></div>';
 }
 function closeDetail(){
   document.getElementById("detailOverlay").classList.remove("active");
@@ -1071,6 +1201,9 @@ function openForm(id){
   formSwitches.nakladkaDalnice = t ? !!t.nakladkaDalnice : false;
   formSwitches.ztizenaNakladka = !!k.ztizenaNakladka;
   formSwitches.uschova = !!k.uschova;
+  formSwitches.predano = !!k.predano;
+  document.getElementById("f_uschovaVozidlo").value = k.uschovaVozidlo || "";
+  fillPredanoOptions(k.predanoRefId || "", t ? t.id : null);
   formSwitches.pretah = !!k.pretah;
   formSwitches.praceMechanika = !!k.praceMechanika;
   formSwitches.cekacka = !!k.cekacka;
@@ -1118,6 +1251,62 @@ function updateSwitchUI(){
   document.getElementById("time_cekacka").style.display = formSwitches.cekacka ? "block" : "none";
   document.getElementById("time_vyprosteni").style.display = formSwitches.vyprosteni ? "block" : "none";
   document.getElementById("time_ostatni").style.display = formSwitches.ostatni ? "block" : "none";
+  document.getElementById("time_predano").style.display = formSwitches.predano ? "block" : "none";
+  document.getElementById("time_uschova").style.display = formSwitches.uschova ? "block" : "none";
+}
+
+function refreshVehicleSuggestions(){
+  var seen = {}, out = [];
+  records.forEach(function(t){
+    var n = (t.vozidlo||"").trim();
+    if(!n) return;
+    var k = n.replace(/\s+/g," ").toLowerCase();
+    if(seen[k]) return;
+    seen[k] = 1; out.push(n);
+  });
+  document.getElementById("vehicleNames").innerHTML =
+    out.sort().map(function(n){ return '<option value="'+esc(n)+'"></option>'; }).join("");
+
+  var seen2 = {}, out2 = [];
+  records.forEach(function(t){
+    var n = ((t.komplikace && t.komplikace.uschovaVozidlo) || "").trim();
+    if(!n) return;
+    var k2 = n.replace(/\s+/g," ").toLowerCase();
+    if(seen2[k2]) return;
+    seen2[k2] = 1; out2.push(n);
+  });
+  out.forEach(function(n){
+    var k2 = n.replace(/\s+/g," ").toLowerCase();
+    if(!seen2[k2]){ seen2[k2] = 1; out2.push(n); }
+  });
+  document.getElementById("uschovaNames").innerHTML =
+    out2.sort().map(function(n){ return '<option value="'+esc(n)+'"></option>'; }).join("");
+}
+
+function uschovaName(r){
+  var k = (r && r.komplikace) || {};
+  return (k.uschovaVozidlo || "").trim();
+}
+function predanoName(t){
+  var k = t.komplikace || {};
+  var ref = k.predanoRefId ? records.find(function(r){ return r.id === k.predanoRefId; }) : null;
+  return uschovaName(ref) || (ref && (ref.vozidlo||"").trim()) || uschovaName(t);
+}
+
+/* trips that had úschova – offered for linking a "předáno" */
+function fillPredanoOptions(selectedId, excludeId){
+  var opts = records.filter(function(r){
+    return r.komplikace && r.komplikace.uschova && r.id !== excludeId;
+  }).sort(sortByDateDesc).map(function(r){
+    var nm = uschovaName(r) || r.vozidlo || "";
+    var where = [r.mistoSlozeni, r.mistoNakladky, r.mestoOdjezd].filter(Boolean)[0] || "";
+    var when = fmtDateShort(r.datum) + (r.casPrijezd ? " " + r.casPrijezd : (r.casOdjezd ? " " + r.casOdjezd : ""));
+    var label = (nm ? nm + " · " : "") + when + (where ? " · " + where : "");
+    return '<option value="'+esc(r.id)+'">'+esc(label)+'</option>';
+  });
+  var sel = document.getElementById("f_predanoRef");
+  sel.innerHTML = '<option value="">— nepropojeno —</option>' + opts.join("");
+  sel.value = selectedId || "";
 }
 
 function renderTollSegments(cat){
@@ -1187,6 +1376,9 @@ function collectFormData(){
       ztizenaNakladka: formSwitches.ztizenaNakladka,
       ztizenaNakladkaText: formSwitches.ztizenaNakladka ? document.getElementById("f_ztizenaNakladka_text").value.trim() : "",
       uschova: formSwitches.uschova,
+      uschovaVozidlo: formSwitches.uschova ? document.getElementById("f_uschovaVozidlo").value.trim() : "",
+      predano: formSwitches.predano,
+      predanoRefId: formSwitches.predano ? document.getElementById("f_predanoRef").value : "",
       pretah: formSwitches.pretah,
       praceMechanika: formSwitches.praceMechanika,
       praceMechanikaMin: praceMechanikaMin,
@@ -1255,7 +1447,7 @@ function csvEscape(v){
 function exportCsv(){
   var header = ["Datum","Vozidlo","Cas odjezdu","Cas navratu","Odkud","Nakladka","Skladka/slozeni","Zpet na firmu","Km",
     "Myto dalnice","Myto dalnice km","Myto 1.trida","Myto 1.trida km",
-    "Ztizena nakladka text","Uschova","Pretah","Prace mechanika min","Cekacka min","Vyprosteni min","Marny vyjezd","Ostatni text","Poznamky"];
+    "Ztizena nakladka text","Uschova","Uschova vozidlo","Predano","Predano k jizde ID","Pretah","Prace mechanika min","Cekacka min","Vyprosteni min","Marny vyjezd","Ostatni text","Poznamky"];
   var lines = [header.join(";")];
   records.slice().sort(sortByDateDesc).forEach(function(t){
     var k = t.komplikace || {};
@@ -1264,7 +1456,7 @@ function exportCsv(){
       t.mytoDalnice ? "ano":"ne", t.mytoDalnice ? Math.round(tollTotalKm(t.mytoDalniceSegments)) : 0,
       t.mytoPrvniTrida ? "ano":"ne", t.mytoPrvniTrida ? Math.round(tollTotalKm(t.mytoPrvniTridaSegments)) : 0,
       k.ztizenaNakladka ? (k.ztizenaNakladkaText||"ano") : "",
-      k.uschova ? "ano":"ne", k.pretah ? "ano":"ne",
+      k.uschova ? "ano":"ne", k.uschova ? (k.uschovaVozidlo||"") : "", k.predano ? "ano":"ne", k.predano && k.predanoRefId ? k.predanoRefId : "", k.pretah ? "ano":"ne",
       k.praceMechanika ? (k.praceMechanikaMin||0) : 0,
       k.cekacka ? (k.cekackaMin||0) : 0,
       k.vyprosteni ? (k.vyprosteniMin||0) : 0,
@@ -1437,7 +1629,7 @@ renderAll();
     });
     document.getElementById('sum_myto').textContent = n ? n + ' ' + plural(n,'úsek','úseky','úseků') : 'bez mýta';
 
-    var keys = ['ztizenaNakladka','uschova','pretah','praceMechanika','cekacka','vyprosteni','marnyVyjezd','ostatni'];
+    var keys = ['ztizenaNakladka','uschova','predano','pretah','praceMechanika','cekacka','vyprosteni','marnyVyjezd','ostatni'];
     var s = keys.filter(function(k){
       var e = document.getElementById('sw_'+k);
       return e && e.classList.contains('on');
