@@ -257,6 +257,14 @@ body{touch-action:pan-y;}
 .mg.open .mg-body{display:block;}
 .mg.open .mg-name{color:var(--accent);}
 .mg.open .mg-chev{border-color:var(--accent);}
+.star{font-size:12.5px;line-height:1;}
+.unik-note{font-size:13px;color:var(--text-dim);margin-top:5px;text-wrap:pretty;}
+.filter-row{display:flex;align-items:center;gap:8px;margin:0 0 4px;}
+.filter-chip{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--hair);
+  border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:500;color:var(--text-dim);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.filter-chip.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:600;}
+
 .list-tools{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:2px 0 6px;}
 .list-tools .lt-n{font-size:12.5px;color:var(--text-dim);}
 .list-tools button{background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;padding:6px 0;cursor:pointer;}
@@ -469,6 +477,9 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
 <!-- JÍZDY -->
 <div class="view" id="view-trips">
   <input type="text" class="search-bar" id="searchInput" placeholder="Hledat město, poznámku…">
+  <div class="filter-row">
+    <button class="filter-chip" type="button" id="btnFilterUnik">⭐ Jen unikátní</button>
+  </div>
   <div id="tripsList"></div>
 </div>
 
@@ -503,8 +514,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
   <button class="btn btn-danger" id="btnWipeAll" style="text-align:left;padding-left:0;">Smazat vše</button>
 
   <div class="section-title">O appce</div>
-  <div class="about-row"><span>Verze appky</span><span class="about-val">2.10.1</span></div>
-  <div class="about-row"><span>Poslední změna</span><span class="about-val">2. 9. 2026, 19:10</span></div>
+  <div class="about-row"><span>Verze appky</span><span class="about-val">2.11.2</span></div>
+  <div class="about-row"><span>Poslední změna</span><span class="about-val">6. 9. 2026</span></div>
 </div>
 
 <!-- TABBAR -->
@@ -669,6 +680,16 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
     </div>
 
     </div></div>
+    <div class="sec" data-sec="unik"><button class="sec-head" type="button"><span class="sec-t">Zajímavost</span><span class="sec-sum" id="sum_unik"></span><span class="sec-chev"></span></button><div class="sec-body">
+    <div class="checkbox-row" style="border-top:none;">
+      <div class="lbl-main">⭐ Unikátní/zajímavá jízda</div>
+      <button class="switch" id="sw_unikatni"><span class="knob"></span></button>
+    </div>
+    <div class="reveal" id="time_unikatni" style="display:none;">
+      <label style="margin-top:0;">Co bylo zajímavé</label>
+      <input type="text" id="f_unikatni_text" placeholder="BMW Motosport, Ferrari…">
+    </div>
+    </div></div>
     <div class="sec" data-sec="pozn"><button class="sec-head" type="button"><span class="sec-t">Poznámky</span><span class="sec-sum" id="sum_pozn"></span><span class="sec-chev"></span></button><div class="sec-body">
     <textarea id="f_poznamky" placeholder="volitelné" style="margin-top:0;"></textarea>
     </div></div>
@@ -699,7 +720,7 @@ var records = [];
 var settings = {defaultFirma:""};
 var editingId = null;
 
-var SWITCH_KEYS = ["mytoDalnice","mytoPrvniTrida","nakladkaDalnice","ztizenaNakladka","uschova","predano","pretah","praceMechanika","cekacka","vyprosteni","marnyVyjezd","ostatni"];
+var SWITCH_KEYS = ["unikatni","mytoDalnice","mytoPrvniTrida","nakladkaDalnice","ztizenaNakladka","uschova","predano","pretah","praceMechanika","cekacka","vyprosteni","marnyVyjezd","ostatni"];
 var formSwitches = {};
 var tollArrays = { mytoDalnice: [], mytoPrvniTrida: [] };
 var tollListIds = { mytoDalnice: "tollSegmentsListDalnice", mytoPrvniTrida: "tollSegmentsListPrvniTrida" };
@@ -1059,9 +1080,10 @@ function tripItemEl(t){
 
   var vehicleBadge = t.vozidlo ? '<span class="vehicle-badge">'+t.vozidlo+'</span>' : '';
   el.innerHTML =
-    '<div class="row1"><span class="row1-left"><span class="date">'+fmtDateShort(t.datum)+'</span>'+vehicleBadge+'</span><span class="km">'+(t.km||0)+' km</span></div>'+
+    '<div class="row1"><span class="row1-left"><span class="date">'+fmtDateShort(t.datum)+'</span>'+(t.unikatni?'<span class="star" title="Unikátní jízda">⭐</span>':'')+vehicleBadge+'</span><span class="km">'+(t.km||0)+' km</span></div>'+
     (mins ? '<div class="time-badge">⏱ '+ (t.casOdjezd||"?") +' – '+ (t.casPrijezd||"?") +' · '+fmtMinutes(mins)+'</div>' : '') +
     '<div class="route">'+ (route || "—") +'</div>'+
+    (t.unikatni && t.unikatniText ? '<div class="unik-note">⭐ '+esc(t.unikatniText)+'</div>' : '') +
     (tags ? '<div class="tags">'+tags+'</div>' : '');
   el.addEventListener("click", function(){ openDetail(t.id); });
   return el;
@@ -1093,19 +1115,24 @@ function toggleMonth(mk){
   renderTripsList();
 }
 
+var onlyUnik = false;
 function renderTripsList(){
   var q = (document.getElementById("searchInput").value || "").toLowerCase().trim();
   var list = records.slice().sort(sortByDateDesc);
+  var chip = document.getElementById("btnFilterUnik");
+  if(chip) chip.classList.toggle("on", onlyUnik);
+  if(onlyUnik) list = list.filter(function(t){ return !!t.unikatni; });
   if(q){
     list = list.filter(function(t){
-      var hay = [t.vozidlo, t.mestoOdjezd, nakladkaLabel(t), t.mistoSlozeni, t.zpetNaFirmu, t.poznamky].join(" ").toLowerCase();
+      var hay = [t.vozidlo, t.mestoOdjezd, nakladkaLabel(t), t.mistoSlozeni, t.zpetNaFirmu, t.poznamky, t.unikatniText].join(" ").toLowerCase();
       return hay.indexOf(q) !== -1;
     });
   }
   var wrap = document.getElementById("tripsList");
   wrap.innerHTML = "";
   if(list.length === 0){
-    wrap.innerHTML = '<div class="empty-state"><div class="emoji">🔍</div>Žádné jízdy k zobrazení.</div>';
+    wrap.innerHTML = '<div class="empty-state"><div class="emoji">'+(onlyUnik?'⭐':'🔍')+'</div>'+
+      (onlyUnik ? 'Zatím žádná unikátní jízda.' : 'Žádné jízdy k zobrazení.')+'</div>';
     return;
   }
 
@@ -1120,7 +1147,7 @@ function renderTripsList(){
   loadOpenMonths();
   /* default: newest month open. while searching: everything open */
   var open = {};
-  if(q){ order.forEach(function(mk){ open[mk] = true; }); }
+  if(q || onlyUnik){ order.forEach(function(mk){ open[mk] = true; }); }
   else if(openMonths){ openMonths.forEach(function(mk){ open[mk] = true; }); }
   else { open[order[0]] = true; }
 
@@ -1137,7 +1164,7 @@ function renderTripsList(){
   tools.innerHTML = '<span class="lt-n">'+list.length+' '+
     (list.length===1?"jízda":(list.length<5?"jízdy":"jízd"))+' · '+order.length+' '+
     (order.length===1?"měsíc":(order.length<5?"měsíce":"měsíců"))+'</span>'+
-    (q ? '' : '<button type="button" id="btnMonthsToggle">'+(openCount ? "Sbalit vše" : "Rozbalit vše")+'</button>');
+    ((q||onlyUnik) ? '' : '<button type="button" id="btnMonthsToggle">'+(openCount ? "Sbalit vše" : "Rozbalit vše")+'</button>');
   wrap.appendChild(tools);
   var tb = tools.querySelector("#btnMonthsToggle");
   if(tb) tb.addEventListener("click", function(){
@@ -1284,6 +1311,11 @@ function openDetail(id){
     }
   }
 
+  if(t.unikatni){
+    html += '<div class="d-sec">Zajímavost</div><div class="d-row"><div class="k">⭐ Unikátní jízda</div><div class="v">'+
+      (esc(t.unikatniText) || "ano")+'</div></div>';
+  }
+
   if(t.poznamky){
     html += '<div class="d-sec">Poznámky</div><div class="d-row"><div class="v">'+esc(t.poznamky)+'</div></div>';
   }
@@ -1333,6 +1365,7 @@ function openForm(id){
   document.getElementById("f_zpetNaFirmu").value = t ? (t.zpetNaFirmu||"") : (settings.defaultFirma||"");
   document.getElementById("f_km").value = t ? (t.km||"") : "";
   document.getElementById("f_poznamky").value = t ? (t.poznamky||"") : "";
+  document.getElementById("f_unikatni_text").value = (t && t.unikatniText) || "";
   document.getElementById("f_ostatni_text").value = k.ostatniText || "";
   document.getElementById("f_ztizenaNakladka_text").value = k.ztizenaNakladkaText || "";
 
@@ -1362,6 +1395,7 @@ function openForm(id){
   formSwitches.vyprosteni = !!k.vyprosteni;
   formSwitches.marnyVyjezd = !!k.marnyVyjezd;
   formSwitches.ostatni = !!k.ostatni;
+  formSwitches.unikatni = t ? !!t.unikatni : false;
 
   tollArrays.mytoDalnice = t && t.mytoDalniceSegments ? JSON.parse(JSON.stringify(t.mytoDalniceSegments)) : [];
   tollArrays.mytoPrvniTrida = t && t.mytoPrvniTridaSegments ? JSON.parse(JSON.stringify(t.mytoPrvniTridaSegments)) : [];
@@ -1406,6 +1440,7 @@ function updateSwitchUI(){
   document.getElementById("time_predano").style.display = formSwitches.predano ? "block" : "none";
   document.getElementById("time_uschova").style.display = formSwitches.uschova ? "block" : "none";
   document.getElementById("time_pretah").style.display = formSwitches.pretah ? "block" : "none";
+  document.getElementById("time_unikatni").style.display = formSwitches.unikatni ? "block" : "none";
 }
 
 function refreshVehicleSuggestions(){
@@ -1571,7 +1606,9 @@ function collectFormData(){
       ostatni: formSwitches.ostatni,
       ostatniText: formSwitches.ostatni ? document.getElementById("f_ostatni_text").value.trim() : ""
     },
-    poznamky: document.getElementById("f_poznamky").value.trim()
+    poznamky: document.getElementById("f_poznamky").value.trim(),
+    unikatni: !!formSwitches.unikatni,
+    unikatniText: formSwitches.unikatni ? document.getElementById("f_unikatni_text").value.trim() : ""
   };
 }
 function hmToMinutes(hId, mId){
@@ -1628,7 +1665,7 @@ function csvEscape(v){
 function exportCsv(){
   var header = ["Datum","Vozidlo","Cas odjezdu","Cas navratu","Odkud","Nakladka","Skladka/slozeni","Zpet na firmu","Km",
     "Myto dalnice","Myto dalnice km","Myto 1.trida","Myto 1.trida km",
-    "Ztizena nakladka text","Uschova","Uschova vozidlo","Uschova vyresena","Predano","Predano k jizde ID","Pretah","Pretah k jizde ID","Prace mechanika min","Cekacka min","Vyprosteni min","Marny vyjezd","Ostatni text","Poznamky"];
+    "Unikatni","Unikatni popis","Ztizena nakladka text","Uschova","Uschova vozidlo","Uschova vyresena","Predano","Predano k jizde ID","Pretah","Pretah k jizde ID","Prace mechanika min","Cekacka min","Vyprosteni min","Marny vyjezd","Ostatni text","Poznamky"];
   var lines = [header.join(";")];
   records.slice().sort(sortByDateDesc).forEach(function(t){
     var k = t.komplikace || {};
@@ -1636,6 +1673,7 @@ function exportCsv(){
       t.datum, t.vozidlo, t.casOdjezd, t.casPrijezd, t.mestoOdjezd, nakladkaLabel(t), t.mistoSlozeni, t.zpetNaFirmu, t.km,
       t.mytoDalnice ? "ano":"ne", t.mytoDalnice ? Math.round(tollTotalKm(t.mytoDalniceSegments)) : 0,
       t.mytoPrvniTrida ? "ano":"ne", t.mytoPrvniTrida ? Math.round(tollTotalKm(t.mytoPrvniTridaSegments)) : 0,
+      t.unikatni ? "ano":"ne", t.unikatniText || "",
       k.ztizenaNakladka ? (k.ztizenaNakladkaText||"ano") : "",
       k.uschova ? "ano":"ne", k.uschova ? (k.uschovaVozidlo||"") : "",
       k.uschova ? ((uschovaResolvers(t).length || k.uschovaUzavrena) ? "ano" : "ne") : "", k.predano ? "ano":"ne", k.predano && k.predanoRefId ? k.predanoRefId : "", k.pretah ? "ano":"ne", k.pretah && k.pretahRefId ? k.pretahRefId : "",
@@ -1740,6 +1778,10 @@ document.getElementById("btnAddSegmentPrvniTrida").addEventListener("click", fun
 });
 
 document.getElementById("searchInput").addEventListener("input", renderTripsList);
+document.getElementById("btnFilterUnik").addEventListener("click", function(){
+  onlyUnik = !onlyUnik;
+  renderTripsList();
+});
 
 document.getElementById("btnExportJson").addEventListener("click", exportJson);
 document.getElementById("btnExportCsv").addEventListener("click", exportCsv);
@@ -1817,6 +1859,11 @@ renderAll();
       return e && e.classList.contains('on');
     }).length;
     document.getElementById('sum_sluzby').textContent = s ? s + ' ' + plural(s,'služba','služby','služeb') : 'žádné';
+
+    var uSw = document.getElementById('sw_unikatni');
+    var uOn = uSw && uSw.classList.contains('on');
+    var uTxt = v('f_unikatni_text');
+    document.getElementById('sum_unik').textContent = uOn ? ('⭐ ' + (uTxt || 'ano')) : '';
 
     var p = v('f_poznamky');
     document.getElementById('sum_pozn').textContent = p ? (p.length > 28 ? p.slice(0,28) + '…' : p) : '';
