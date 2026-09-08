@@ -209,6 +209,9 @@ body{touch-action:pan-y;}
 
 .empty-state{text-align:center;padding:56px 20px;color:var(--text-dim);font-size:14px;}
 .empty-state .emoji{font-size:34px;margin-bottom:10px;opacity:.5;}
+.empty-reset{display:block;margin:18px auto 0;background:var(--fill);border:none;border-radius:12px;
+  padding:12px 18px;min-height:44px;font-size:14px;font-weight:600;font-family:inherit;
+  color:var(--accent);cursor:pointer;-webkit-tap-highlight-color:transparent;}
 
 /* Trip list item — hairline rows */
 .trip-item{
@@ -1214,7 +1217,7 @@ function renderTripsList(){
     var nOpen = records.filter(isOpenTrip).length;
     chipO.classList.toggle("on", onlyOpen);
     chipO.textContent = "⏳ Nedokončené" + (nOpen ? " · " + nOpen : "");
-    chipO.style.display = nOpen ? "inline-flex" : "none";
+    chipO.style.display = (nOpen || onlyOpen) ? "inline-flex" : "none";
   }
   if(onlyOpen) list = list.filter(isOpenTrip);
   if(onlyUnik) list = list.filter(function(t){ return !!t.unikatni; });
@@ -1228,7 +1231,14 @@ function renderTripsList(){
   wrap.innerHTML = "";
   if(list.length === 0){
     wrap.innerHTML = '<div class="empty-state"><div class="emoji">'+(onlyOpen?'✅':(onlyUnik?'⭐':'🔍'))+'</div>'+
-      (onlyOpen ? 'Všechny jízdy jsou dokončené.' : (onlyUnik ? 'Zatím žádná unikátní jízda.' : 'Žádné jízdy k zobrazení.'))+'</div>';
+      (onlyOpen ? 'Všechny jízdy jsou dokončené.' : (onlyUnik ? 'Zatím žádná unikátní jízda.' : 'Žádné jízdy k zobrazení.'))+
+      ((onlyOpen||onlyUnik) ? '<button type="button" class="empty-reset" id="btnResetFilter">← Zobrazit všechny jízdy</button>' : '')+'</div>';
+    var br = wrap.querySelector("#btnResetFilter");
+    if(br) br.addEventListener("click", function(){
+      onlyOpen = false; onlyUnik = false;
+      document.getElementById("searchInput").value = "";
+      renderTripsList();
+    });
     return;
   }
 
