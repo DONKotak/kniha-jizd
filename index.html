@@ -10,8 +10,8 @@
 <meta name="theme-color" content="#0B6E4F">
 <title>Kniha jízd</title>
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-<link rel="icon" type="image/png" sizes="192x192" href="icon-192-v2.png">
-<link rel="icon" type="image/png" sizes="512x512" href="icon-512-v2.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
 <link rel="manifest" href="manifest.json">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -265,7 +265,7 @@ body{touch-action:pan-y;}
 
 /* Collapsible month groups */
 .mg{margin:0 -20px;padding:0 20px;border-top:1px solid var(--hair);}
-.mg-stick{position:sticky;top:var(--topbar-h,72px);z-index:5;background:var(--bg);
+.mg-stick{position:sticky;top:66px;z-index:5;background:var(--bg);
   margin:0 -20px;padding:0 20px;}
 .mg.open .mg-stick{box-shadow:0 1px 0 var(--hair);}
 .mg:first-of-type{border-top:none;}
@@ -288,9 +288,10 @@ body{touch-action:pan-y;}
 .mg.open .mg-chev{border-color:var(--accent);}
 .star{font-size:12.5px;line-height:1;}
 .unik-note{font-size:13px;color:var(--text-dim);margin-top:5px;text-wrap:pretty;}
-.filter-row{display:flex;align-items:center;gap:8px;margin:0 0 4px;}
+.filter-row{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0 0 4px;}
 .filter-chip{display:inline-flex;align-items:center;gap:6px;background:none;border:1px solid var(--hair);
-  border-radius:999px;padding:8px 14px;font-size:13.5px;font-weight:500;color:var(--text-dim);
+  border-radius:999px;padding:8px 14px;min-height:44px;white-space:nowrap;flex:0 0 auto;
+  font-size:13.5px;font-weight:500;color:var(--text-dim);font-family:inherit;
   cursor:pointer;-webkit-tap-highlight-color:transparent;}
 .filter-chip.on{background:var(--text);border-color:var(--text);color:var(--bg);font-weight:600;}
 .quick-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;}
@@ -515,6 +516,7 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
   <input type="text" class="search-bar" id="searchInput" placeholder="Hledat město, poznámku…">
   <div class="filter-row">
     <button class="filter-chip" type="button" id="btnFilterOpen">⏳ Nedokončené</button>
+    <button class="filter-chip" type="button" id="btnFilterUschova">🅿️ Nevyzvednuté</button>
     <button class="filter-chip" type="button" id="btnFilterUnik">⭐ Jen unikátní</button>
   </div>
   <div id="tripsList"></div>
@@ -550,8 +552,8 @@ input[type=time],input[type=date],input[type=month]{min-width:0;max-width:100%;p
   <button class="btn btn-danger" id="btnWipeAll" style="text-align:left;padding-left:0;">Smazat vše</button>
 
   <div class="section-title">O appce</div>
-  <div class="about-row"><span>Verze appky</span><span class="about-val">2.13</span></div>
-  <div class="about-row"><span>Poslední změna</span><span class="about-val">8. 9. 2026</span></div>
+  <div class="about-row"><span>Verze appky</span><span class="about-val">2.14</span></div>
+  <div class="about-row"><span>Poslední změna</span><span class="about-val">16. 9. 2026</span></div>
 </div>
 
 <!-- TABBAR -->
@@ -1111,7 +1113,7 @@ function renderOpenBanner(){
   var op = openTrips();
   if(!op.length){ wrap.innerHTML = ""; return; }
   var first = op[0];
-  var where = [first.mestoOdjezd, nakladkaLabel(first), first.mistoSlozeni].filter(Boolean).join(" → ");
+  var where = [first.mestoOdjezd, nakladkaLabel(first), first.mistoSlozeni].filter(Boolean).join(" – ");
   var sub = op.length === 1
     ? fmtDateShort(first.datum) + (first.casOdjezd ? " · odjezd " + first.casOdjezd : "") + (where ? " · " + where : "")
     : "Nejstarší " + fmtDateShort(op[op.length-1].datum) + " · klepni pro seznam";
@@ -1132,7 +1134,7 @@ function renderOpenBanner(){
 function tripItemEl(t){
   var el = document.createElement("div");
   el.className = "trip-item" + (t.komplikace && t.komplikace.marnyVyjezd ? " is-marny" : (isOpenTrip(t) ? " is-open" : ""));
-  var route = [t.mestoOdjezd, nakladkaLabel(t), t.mistoSlozeni, t.zpetNaFirmu].filter(Boolean).join(" → ");
+  var route = [t.mestoOdjezd, nakladkaLabel(t), t.mistoSlozeni, t.zpetNaFirmu].filter(Boolean).join(" – ");
   var mins = tripDurationMinutes(t);
 
   var tags = "";
@@ -1207,6 +1209,7 @@ function toggleMonth(mk){
 
 var onlyUnik = false;
 var onlyOpen = false;
+var onlyUschova = false;
 function renderTripsList(){
   var q = (document.getElementById("searchInput").value || "").toLowerCase().trim();
   var list = records.slice().sort(sortByDateDesc);
@@ -1220,6 +1223,14 @@ function renderTripsList(){
     chipO.style.display = (nOpen || onlyOpen) ? "inline-flex" : "none";
   }
   if(onlyOpen) list = list.filter(isOpenTrip);
+  var chipU = document.getElementById("btnFilterUschova");
+  if(chipU){
+    var nUsch = records.filter(isUschovaOpen).length;
+    chipU.classList.toggle("on", onlyUschova);
+    chipU.textContent = "🅿️ Nevyzvednuté" + (nUsch ? " · " + nUsch : "");
+    chipU.style.display = (nUsch || onlyUschova) ? "inline-flex" : "none";
+  }
+  if(onlyUschova) list = list.filter(isUschovaOpen);
   if(onlyUnik) list = list.filter(function(t){ return !!t.unikatni; });
   if(q){
     list = list.filter(function(t){
@@ -1230,12 +1241,12 @@ function renderTripsList(){
   var wrap = document.getElementById("tripsList");
   wrap.innerHTML = "";
   if(list.length === 0){
-    wrap.innerHTML = '<div class="empty-state"><div class="emoji">'+(onlyOpen?'✅':(onlyUnik?'⭐':'🔍'))+'</div>'+
-      (onlyOpen ? 'Všechny jízdy jsou dokončené.' : (onlyUnik ? 'Zatím žádná unikátní jízda.' : 'Žádné jízdy k zobrazení.'))+
-      ((onlyOpen||onlyUnik) ? '<button type="button" class="empty-reset" id="btnResetFilter">← Zobrazit všechny jízdy</button>' : '')+'</div>';
+    wrap.innerHTML = '<div class="empty-state"><div class="emoji">'+(onlyOpen?'✅':(onlyUschova?'🅿️':(onlyUnik?'⭐':'🔍')))+'</div>'+
+      (onlyOpen ? 'Všechny jízdy jsou dokončené.' : (onlyUschova ? 'Žádné auto u nás nestíží – všechna jsou vyřešená.' : (onlyUnik ? 'Zatím žádná unikátní jízda.' : 'Žádné jízdy k zobrazení.')))+
+      ((onlyOpen||onlyUnik||onlyUschova) ? '<button type="button" class="empty-reset" id="btnResetFilter">← Zobrazit všechny jízdy</button>' : '')+'</div>';
     var br = wrap.querySelector("#btnResetFilter");
     if(br) br.addEventListener("click", function(){
-      onlyOpen = false; onlyUnik = false;
+      onlyOpen = false; onlyUnik = false; onlyUschova = false;
       document.getElementById("searchInput").value = "";
       renderTripsList();
     });
@@ -1253,7 +1264,7 @@ function renderTripsList(){
   loadOpenMonths();
   /* default: newest month open. while searching: everything open */
   var open = {};
-  if(q || onlyUnik || onlyOpen){ order.forEach(function(mk){ open[mk] = true; }); }
+  if(q || onlyUnik || onlyOpen || onlyUschova){ order.forEach(function(mk){ open[mk] = true; }); }
   else if(openMonths){ openMonths.forEach(function(mk){ open[mk] = true; }); }
   else { open[order[0]] = true; }
 
@@ -1270,7 +1281,7 @@ function renderTripsList(){
   tools.innerHTML = '<span class="lt-n">'+list.length+' '+
     (list.length===1?"jízda":(list.length<5?"jízdy":"jízd"))+' · '+order.length+' '+
     (order.length===1?"měsíc":(order.length<5?"měsíce":"měsíců"))+'</span>'+
-    ((q||onlyUnik||onlyOpen) ? '' : '<button type="button" id="btnMonthsToggle">'+(openCount ? "Sbalit vše" : "Rozbalit vše")+'</button>');
+    ((q||onlyUnik||onlyOpen||onlyUschova) ? '' : '<button type="button" id="btnMonthsToggle">'+(openCount ? "Sbalit vše" : "Rozbalit vše")+'</button>');
   wrap.appendChild(tools);
   var tb = tools.querySelector("#btnMonthsToggle");
   if(tb) tb.addEventListener("click", function(){
@@ -1298,6 +1309,7 @@ function renderTripsList(){
 
     var stick = document.createElement("div");
     stick.className = "mg-stick";
+    stick.style.top = (typeof topbarHeight === "function" ? topbarHeight() : 66) + "px";
     stick.appendChild(head);
 
     var bar = document.createElement("div");
@@ -1664,6 +1676,11 @@ function uschovaResolvers(t){
   }).sort(function(a,b){ return sortByDateDesc(a.rec, b.rec); });
 }
 function uschovaClosed(t){ return !!(t.komplikace && t.komplikace.uschovaUzavrena); }
+/* auto stále u nás: úschova, kterou nikdo nevyřešil a není ručně uzavřená */
+function isUschovaOpen(t){
+  var k = t.komplikace || {};
+  return !!k.uschova && !k.uschovaUzavrena && uschovaResolvers(t).length === 0;
+}
 function setUschovaClosed(id, val){
   var t = records.find(function(r){ return r.id === id; });
   if(!t) return;
@@ -1963,12 +1980,17 @@ document.getElementById("btnAddSegmentPrvniTrida").addEventListener("click", fun
 document.getElementById("searchInput").addEventListener("input", renderTripsList);
 document.getElementById("btnFilterOpen").addEventListener("click", function(){
   onlyOpen = !onlyOpen;
-  if(onlyOpen) onlyUnik = false;
+  if(onlyOpen){ onlyUnik = false; onlyUschova = false; }
+  renderTripsList();
+});
+document.getElementById("btnFilterUschova").addEventListener("click", function(){
+  onlyUschova = !onlyUschova;
+  if(onlyUschova){ onlyUnik = false; onlyOpen = false; }
   renderTripsList();
 });
 document.getElementById("btnFilterUnik").addEventListener("click", function(){
   onlyUnik = !onlyUnik;
-  if(onlyUnik) onlyOpen = false;
+  if(onlyUnik){ onlyOpen = false; onlyUschova = false; }
   renderTripsList();
 });
 
@@ -2032,7 +2054,7 @@ renderAll();
 
     var pts = ['f_mestoOdjezd','f_mistoNakladky','f_mistoSlozeni','f_zpetNaFirmu'].map(v).filter(Boolean);
     var tr = [];
-    if(pts.length) tr.push(pts.length > 1 ? pts[0] + ' → ' + pts[pts.length-1] : pts[0]);
+    if(pts.length) tr.push(pts.length > 1 ? pts[0] + ' – ' + pts[pts.length-1] : pts[0]);
     if(v('f_km')) tr.push(v('f_km') + ' km');
     document.getElementById('sum_trasa').textContent = tr.join(' · ');
 
@@ -2069,20 +2091,23 @@ renderAll();
 
 /* v\u00fd\u0161ka horn\u00ed li\u0161ty \u2013 offset pro p\u0159ilepen\u00e9 hlavi\u010dky m\u011bs\u00edc\u016f */
 var topbarRO = null;
+function topbarHeight(){
+  var tb = document.querySelector(".topbar");
+  return (tb && tb.offsetHeight) ? tb.offsetHeight : 66;
+}
+function applyStickyOffset(){
+  var h = topbarHeight() + "px";
+  document.querySelectorAll(".mg-stick").forEach(function(el){ el.style.top = h; });
+}
 (function(){
   var tb = document.querySelector(".topbar");
-  function measure(){
-    if(!tb) return;
-    var h = tb.offsetHeight;
-    if(h > 0) document.documentElement.style.setProperty("--topbar-h", h + "px");
-  }
-  measure();
-  requestAnimationFrame(measure);
-  window.addEventListener("load", measure);
-  if(document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
-  window.addEventListener("resize", measure);
-  window.addEventListener("orientationchange", function(){ setTimeout(measure, 200); });
-  if(window.ResizeObserver && tb){ topbarRO = new ResizeObserver(measure); topbarRO.observe(tb); }
+  applyStickyOffset();
+  requestAnimationFrame(applyStickyOffset);
+  window.addEventListener("load", applyStickyOffset);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(applyStickyOffset);
+  window.addEventListener("resize", applyStickyOffset);
+  window.addEventListener("orientationchange", function(){ setTimeout(applyStickyOffset, 200); });
+  if(window.ResizeObserver && tb){ topbarRO = new ResizeObserver(applyStickyOffset); topbarRO.observe(tb); }
 })();
 </script>
 <script>
