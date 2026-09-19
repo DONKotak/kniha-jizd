@@ -1,6 +1,6 @@
 // Bump this whenever index.html/manifest/icons change, so old caches get
 // cleared and the phone picks up the new version next time it has signal.
-var CACHE_NAME = "kniha-jizd-v11";
+var CACHE_NAME = "kniha-jizd-v12";
 var ASSETS = ["./", "./index.html", "./manifest.json", "./icon-192-v2.png", "./icon-512-v2.png", "./apple-touch-icon.png"];
 
 self.addEventListener("install", function(event){
